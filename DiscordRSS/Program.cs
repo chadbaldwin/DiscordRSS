@@ -54,8 +54,19 @@ namespace DiscordRSS
 
                     Console.WriteLine($"Processing: {feed.FeedUrl}");
 
-                    // Get all the posts for that feed
-                    var rssItems = await GetRssItems(feed.FeedUrl, feed.LastPublishDate);
+                    IOrderedEnumerable<RssSchema> rssItems;
+
+                    try
+                    {
+                        // Get all the posts for that feed
+                        rssItems = await GetRssItems(feed.FeedUrl, feed.LastPublishDate);
+                    }
+                    catch (Exception ex)
+                    {   // If an exception is thrown, move to the next feed
+                        feed.LastErrorDate = DateTime.UtcNow;
+                        feed.LastError = ex;
+                        continue;
+                    }
 
                     foreach (var item in rssItems)
                     {
@@ -66,7 +77,7 @@ namespace DiscordRSS
                             await PostDiscordMessage(message);
                         }
                         catch (Exception ex)
-                        {
+                        {   // If an exception is thrown, move to the next feed
                             feed.LastErrorDate = DateTime.UtcNow;
                             feed.LastError = ex;
                             break;
@@ -74,6 +85,8 @@ namespace DiscordRSS
 
                         feed.LastPublishDate = item.PublishDate;
                     }
+
+                    Console.WriteLine("");
                 }
                 Thread.Sleep(TimeSpan.FromSeconds(5));
             }
